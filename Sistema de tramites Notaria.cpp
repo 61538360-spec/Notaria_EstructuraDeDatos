@@ -54,6 +54,22 @@ bool soloDigitos(const char* s) {
     return true;
 }
 
+void leerTexto(const char* msg, char* destino, int max) {
+    while (true) {
+        cout << msg;
+        cin.getline(destino, max);
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "  Texto demasiado largo.\n";
+        } else if (strlen(destino) == 0 || strchr(destino, '|') != NULL) {
+            cout << "  Dato invalido (no puede estar vacio ni contener '|').\n";
+        } else {
+            return;
+        }
+    }
+}
+
 void leerTextoLetras(const char* msg, char* destino, int max) {
     bool tieneNumero;
 
@@ -69,7 +85,7 @@ void leerTextoLetras(const char* msg, char* destino, int max) {
         }
 
         if (tieneNumero) {
-            cout << "Error: no ingrese numeros en este campo.\n";
+            cout << "No ingrese numeros en este campo\n";
         }
 
     } while (tieneNumero);
@@ -87,7 +103,7 @@ void leerDni(const char* msg, char* destino) {
     }
 }
 
-void leerFecha(const char* msg, char* destino) {      // dd/mm/aaaa
+void leerFecha(const char* msg, char* destino) {      
     char aux[50];
     while (true) {
         cout << msg;
@@ -305,7 +321,7 @@ void mostrarTurno(Turno* t) {
 
 bool tieneTurnosPendientes(const char* codigo) {
     for (Turno* aux = frente; aux != NULL; aux = aux->siguiente)
-        if (strcDmp(aux->codigoTramite, codigo) == 0) return true;
+        if (strcmp(aux->codigoTramite, codigo) == 0)
     return false;
 }
 
@@ -430,33 +446,28 @@ void visualizarOrden() {
 }
 
 void insertarTramite() {
-    cout << "\n=== REGISTRAR TRAMITE ===\n";
-    char codigo[15];
-    leerTexto("Codigo del tramite: ", codigo, 15);
-    if (buscarPorCodigo(codigo) != NULL) {
-        cout << "Error: ya existe un tramite con ese codigo.\n";
+    Tramite* nuevo = new Tramite;
+
+    cout << "\n--- REGISTRAR TRAMITE ---\n";
+    leerTexto("Codigo del tramite: ", nuevo->codigo, 15);
+    if (buscarPorCodigo(nuevo->codigo) != NULL) {
+        cout << "El codigo ya existe.\n";
+        delete nuevo;
         return;
     }
-    Tramite* nuevo = new Tramite;
-    strcpy(nuevo->codigo, codigo);
-    leerDni("DNI del cliente (8 digitos): ", nuevo->dni);
-    leerTexto("Nombre del cliente: ", nuevo->nombre, 50);
-    leerTexto("Tipo de tramite: ", nuevo->tipo, 40);
-    leerFecha("Fecha de registro (dd/mm/aaaa): ", nuevo->fecha);
+
+    leerDni("DNI del cliente: ", nuevo->dni);
+    leerTextoLetras("Nombre del cliente: ", nuevo->nombre, 50);
+    leerTextoLetras("Tipo de tramite: ", nuevo->tipo, 40);
+    leerFecha("Fecha de registro (DD/MM/AAAA): ", nuevo->fecha);
     strcpy(nuevo->estado, "Pendiente");
     nuevo->costo = leerCosto("Costo del tramite: S/ ");
-    leerTexto("Descripcion: ", nuevo->descripcion, 100);
-    nuevo->siguiente = NULL;
+    leerTexto("Descripcion del tramite: ", nuevo->descripcion, 100);
 
-    if (inicioLista == NULL) inicioLista = nuevo;
-    else {
-        Tramite* aux = inicioLista;
-        while (aux->siguiente != NULL) aux = aux->siguiente;
-        aux->siguiente = nuevo;
-    }
-    cout << "Tramite registrado correctamente.\n";
-    cout << "Codigo: " << nuevo->codigo << " | Cliente: " << nuevo->nombre
-         << " | Estado: " << nuevo->estado << endl;
+    nuevo->siguiente = inicioLista;
+    inicioLista = nuevo;
+
+    cout << "Tramite registrado.\n";
 }
 
 void mostrarTramites() {
