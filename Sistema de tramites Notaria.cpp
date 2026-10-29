@@ -3,8 +3,8 @@
 #include <cstring>
 #include <cstdlib>
 using namespace std;
- 
-struct Tramite {                      
+
+struct Tramite {                       
     char codigo[15];
     char dni[9];
     char nombre[50];
@@ -15,14 +15,14 @@ struct Tramite {
     char descripcion[100];
     Tramite* siguiente;
 };
- 
+
 struct Turno {                         
     int numero;
     char dni[9];
     char codigoTramite[15];
     Turno* siguiente;
 };
- 
+
 struct Modificacion {                  
     char codigoTramite[15];
     char dni[9];                       
@@ -35,13 +35,13 @@ struct Modificacion {
     char cambio[100];                  
     Modificacion* siguiente;
 };
- 
-Tramite* inicioLista = NULL;          
+
+Tramite* inicioLista = NULL;           
 Turno* frente = NULL;                  
 Turno* fin = NULL;                    
-int ultimoNumero = 0;                 
+int ultimoNumero = 0;                  
 Modificacion* cima = NULL;             
- 
+
 const char* ARCH_TRAMITES = "tramites.txt";
 const char* ARCH_TURNOS = "turnos.txt";
 const char* ARCH_HISTORIAL = "historial.txt";
@@ -52,22 +52,6 @@ bool soloDigitos(const char* s) {
     for (int i = 0; i < n; i++)
         if (s[i] < '0' || s[i] > '9') return false;
     return true;
-}
-
-void leerTexto(const char* msg, char* destino, int max) {
-    while (true) {
-        cout << msg;
-        cin.getline(destino, max);
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(1000, '\n');
-            cout << "  Texto demasiado largo.\n";
-        } else if (strlen(destino) == 0 || strchr(destino, '|') != NULL) {
-            cout << "  Dato invalido (no puede estar vacio ni contener '|').\n";
-        } else {
-            return;
-        }
-    }
 }
 
 void leerTextoLetras(const char* msg, char* destino, int max) {
@@ -90,6 +74,7 @@ void leerTextoLetras(const char* msg, char* destino, int max) {
 
     } while (tieneNumero);
 }
+
 
 void leerDni(const char* msg, char* destino) {
     char aux[50];
@@ -163,98 +148,321 @@ void leerEstado(char* destino) {
     }
 }
 
-//Lista
 
-void insertarTramite() {
-    Tramite* nuevo = new Tramite;
+Tramite* buscarPorCodigo(const char* codigo) {
+    for (Tramite* aux = inicioLista; aux != NULL; aux = aux->siguiente)
+        if (strcmp(aux->codigo, codigo) == 0) return aux;
+    return NULL;
+}
 
-    cout << "\n--- REGISTRAR TRAMITE ---\n";
+void mostrarTramite(Tramite* t) {
+    cout << "  --------------------------------------\n";
+    cout << "  Codigo      : " << t->codigo << endl;
+    cout << "  DNI         : " << t->dni << endl;
+    cout << "  Cliente     : " << t->nombre << endl;
+    cout << "  Tipo        : " << t->tipo << endl;
+    cout << "  Fecha       : " << t->fecha << endl;
+    cout << "  Estado      : " << t->estado << endl;
+    cout << "  Costo       : S/ " << t->costo << endl;
+    cout << "  Descripcion : " << t->descripcion << endl;
+}
 
-    leerTexto("Codigo del tramite: ", nuevo->codigo, 15);
+int contarTramites() {
+    int n = 0;
+    for (Tramite* aux = inicioLista; aux != NULL; aux = aux->siguiente) n++;
+    return n;
+}
 
-    if (buscarPorCodigo(nuevo->codigo) != NULL) {
-        cout << "Error: el codigo ya existe.\n";
-        delete nuevo;
+bool pilaVacia() { return cima == NULL; }
+
+void mostrarModificacion(Modificacion* m) {
+    cout << "  --------------------------------------\n";
+    cout << "  Tramite modificado : " << m->codigoTramite << endl;
+    cout << "  Cambio realizado   : " << m->cambio << endl;
+    cout << "  Datos anteriores:\n";
+    cout << "    DNI         : " << m->dni << endl;
+    cout << "    Cliente     : " << m->nombre << endl;
+    cout << "    Tipo        : " << m->tipo << endl;
+    cout << "    Fecha       : " << m->fecha << endl;
+    cout << "    Estado      : " << m->estado << endl;
+    cout << "    Costo       : S/ " << m->costo << endl;
+    cout << "    Descripcion : " << m->descripcion << endl;
+}
+
+void apilarModificacion(Tramite* t, const char* cambio) {
+    Modificacion* m = new Modificacion;
+    strcpy(m->codigoTramite, t->codigo);
+    strcpy(m->dni, t->dni);
+    strcpy(m->nombre, t->nombre);
+    strcpy(m->tipo, t->tipo);
+    strcpy(m->fecha, t->fecha);
+    strcpy(m->estado, t->estado);
+    m->costo = t->costo;
+    strcpy(m->descripcion, t->descripcion);
+    strcpy(m->cambio, cambio);
+    m->siguiente = cima;       
+    cima = m;                  
+}
+
+void eliminarUltimaModificacion() {
+    cout << "\n=== ELIMINAR ULTIMA MODIFICACION ===\n";
+    if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
+    Modificacion* temp = cima;
+    cout << "Modificacion eliminada del tramite: " << temp->codigoTramite << endl;
+    cima = cima->siguiente;
+    delete temp;
+    cout << "Operacion retirada correctamente.\n";
+}
+
+void deshacerUltimaModificacion() {
+    cout << "\n=== DESHACER ULTIMA MODIFICACION ===\n";
+    if (pilaVacia()) { cout << "No hay modificaciones para deshacer.\n"; return; }
+    Modificacion* m = cima;
+    cout << "Se recuperaran los datos anteriores:\n";
+    mostrarModificacion(m);
+
+    Tramite* t = buscarPorCodigo(m->codigoTramite);
+    if (t == NULL) {
+        cout << "El tramite ya no existe en la lista. Se descarta la modificacion.\n";
+    } else {
+        strcpy(t->dni, m->dni);
+        strcpy(t->nombre, m->nombre);
+        strcpy(t->tipo, m->tipo);
+        strcpy(t->fecha, m->fecha);
+        strcpy(t->estado, m->estado);
+        t->costo = m->costo;
+        strcpy(t->descripcion, m->descripcion);
+        cout << "\nTramite restaurado en la lista:\n";
+        mostrarTramite(t);
+    }
+    cima = cima->siguiente;
+    delete m;
+    cout << "Modificacion deshecha y retirada del historial.\n";
+}
+
+void mostrarHistorial() {
+    cout << "\n=== HISTORIAL DE MODIFICACIONES ===\n";
+    if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
+    int pos = 1;
+    for (Modificacion* aux = cima; aux != NULL; aux = aux->siguiente, pos++) {
+        cout << "  [" << pos << "]" << (pos == 1 ? " (MAS RECIENTE)" : "") << endl;
+        mostrarModificacion(aux);
+    }
+}
+
+void consultarUltimaModificacion() {
+    cout << "\n=== ULTIMA MODIFICACION ===\n";
+    if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
+    mostrarModificacion(cima);
+}
+
+void buscarModificacion() {
+    cout << "\n=== BUSCAR MODIFICACION ===\n";
+    if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
+    char codigo[15];
+    leerTexto("Codigo del tramite: ", codigo, 15);
+    int n = 0;
+    for (Modificacion* aux = cima; aux != NULL; aux = aux->siguiente)
+        if (strcmp(aux->codigoTramite, codigo) == 0) { mostrarModificacion(aux); n++; }
+    if (n == 0) cout << "No hay modificaciones para ese tramite.\n";
+    else cout << "\nModificaciones encontradas: " << n << endl;
+}
+
+int contarModificaciones() {
+    int n = 0;
+    for (Modificacion* aux = cima; aux != NULL; aux = aux->siguiente) n++;
+    return n;
+}
+
+void verificarHistorial() {
+    if (pilaVacia()) cout << "No existen modificaciones disponibles.\n";
+    else cout << "El historial contiene modificaciones registradas.\n";
+}
+
+void purgarHistorial(const char* codigo) {
+    Modificacion* actual = cima;
+    Modificacion* anterior = NULL;
+    while (actual != NULL) {
+        if (strcmp(actual->codigoTramite, codigo) == 0) {
+            Modificacion* borrar = actual;
+            actual = actual->siguiente;
+            if (anterior == NULL) cima = actual;
+            else anterior->siguiente = actual;
+            delete borrar;
+        } else {
+            anterior = actual;
+            actual = actual->siguiente;
+        }
+    }
+}
+
+bool colaVacia() { return frente == NULL; }
+
+void mostrarTurno(Turno* t) {
+    cout << "  Turno No. " << t->numero << " | DNI: " << t->dni
+         << " | Tramite: " << t->codigoTramite << endl;
+}
+
+bool tieneTurnosPendientes(const char* codigo) {
+    for (Turno* aux = frente; aux != NULL; aux = aux->siguiente)
+        if (strcDmp(aux->codigoTramite, codigo) == 0) return true;
+    return false;
+}
+
+void registrarTurno() {
+    cout << "\n=== REGISTRAR TURNO ===\n";
+    char codigo[15], dni[9];
+    leerTexto("Codigo del tramite: ", codigo, 15);
+    Tramite* t = buscarPorCodigo(codigo);
+    if (t == NULL) { cout << "Error: el tramite no esta registrado.\n"; return; }
+    leerDni("DNI del cliente (8 digitos): ", dni);
+    if (strcmp(t->dni, dni) != 0) {
+        cout << "Error: el DNI no coincide con el cliente del tramite.\n";
+        return;
+    }
+    if (strcmp(t->estado, "Finalizado") == 0) {
+        cout << "Error: el tramite ya esta finalizado y no requiere turno.\n";
+        return;
+    }
+    if (tieneTurnosPendientes(codigo)) {
+        cout << "Error: ese tramite ya tiene un turno pendiente.\n";
         return;
     }
 
-    leerDni("DNI del cliente: ", nuevo->dni);
-
-    leerTextoLetras("Nombre del cliente: ", nuevo->nombre, 50);
-    leerTextoLetras("Tipo de tramite: ", nuevo->tipo, 40);
-
-    leerFecha("Fecha de registro (DD/MM/AAAA): ", nuevo->fecha);
-
-    strcpy(nuevo->estado, "Pendiente");
-
-    nuevo->costo = leerCosto("Costo del tramite: S/ ");
-
-    leerTexto("Descripcion del tramite: ", nuevo->descripcion, 100);
-
-    nuevo->siguiente = inicioLista;
-    inicioLista = nuevo;
-
-    cout << "Tramite registrado correctamente.\n";
+    Turno* nuevo = new Turno;
+    ultimoNumero++;
+    nuevo->numero = ultimoNumero;
+    strcpy(nuevo->dni, dni);
+    strcpy(nuevo->codigoTramite, codigo);
+    nuevo->siguiente = NULL;
+    if (colaVacia()) { frente = nuevo; fin = nuevo; }
+    else { fin->siguiente = nuevo; fin = nuevo; }
+    cout << "Turno registrado correctamente. Numero asignado: " << nuevo->numero << endl;
 }
 
-void eliminarTramite() {
-    char codigo[15];
+void atenderSiguienteTurno() {
+    cout << "\n=== ATENDER SIGUIENTE TURNO ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    Turno* atendido = frente;
+    cout << "Atendiendo a:\n";
+    mostrarTurno(atendido);
+    Tramite* t = buscarPorCodigo(atendido->codigoTramite);
+    if (t != NULL) mostrarTramite(t);
+    frente = frente->siguiente;
+    if (frente == NULL) fin = NULL;
+    delete atendido;
+    cout << "Turno atendido y retirado de la cola.\n";
+}
 
-    cout << "\n--- ELIMINAR TRAMITE ---\n";
-    leerTexto("Ingrese el codigo del tramite: ", codigo, 15);
+void mostrarTurnos() {
+    cout << "\n=== TURNOS PENDIENTES ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    for (Turno* aux = frente; aux != NULL; aux = aux->siguiente) mostrarTurno(aux);
+}
 
-    Tramite* actual = inicioLista;
-    Tramite* anterior = NULL;
+void consultarSiguienteTurno() {
+    cout << "\n=== SIGUIENTE TURNO ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    mostrarTurno(frente);
+}
 
-    while (actual != NULL &&
-           strcmp(actual->codigo, codigo) != 0) {
+void buscarTurno() {
+    cout << "\n=== BUSCAR TURNO ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    cout << "1. Por numero de turno\n2. Por DNI\n";
+    int op = leerOpcion("Opcion: ");
+    bool encontrado = false;
+    if (op == 1) {
+        int n = leerOpcion("Numero de turno: ");
+        for (Turno* aux = frente; aux != NULL; aux = aux->siguiente)
+            if (aux->numero == n) { mostrarTurno(aux); encontrado = true; }
+    } else if (op == 2) {
+        char d[9];
+        leerDni("DNI: ", d);
+        for (Turno* aux = frente; aux != NULL; aux = aux->siguiente)
+            if (strcmp(aux->dni, d) == 0) { mostrarTurno(aux); encontrado = true; }
+    } else {
+        cout << "Opcion inexistente.\n";
+        return;
+    }
+    if (!encontrado) cout << "El turno no existe.\n";
+}
+
+void cancelarTurno() {
+    cout << "\n=== CANCELAR TURNO ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    int n = leerOpcion("Numero de turno a cancelar: ");
+    Turno* actual = frente;
+    Turno* anterior = NULL;
+    while (actual != NULL && actual->numero != n) {
         anterior = actual;
         actual = actual->siguiente;
     }
-
-    if (actual == NULL) {
-        cout << "Error: no se encontro el tramite.\n";
-        return;
-    }
-
-    if (strcmp(actual->estado, "En proceso") == 0) {
-        cout << "No se puede eliminar un tramite en proceso.\n";
-        return;
-    }
-
-    Turno* turno = frente;
-
-    while (turno != NULL) {
-        if (strcmp(turno->codigoTramite, codigo) == 0) {
-            cout << "No se puede eliminar: el tramite tiene un turno pendiente.\n";
-            return;
-        }
-
-        turno = turno->siguiente;
-    }
-
-    char respuesta;
-    cout << "¿Desea eliminar el tramite? (S/N): ";
-    cin >> respuesta;
-    cin.ignore(1000, '\n');
-
-    if (respuesta != 'S' && respuesta != 's') {
-        cout << "Eliminacion cancelada.\n";
-        return;
-    }
-
-    if (anterior == NULL) {
-        inicioLista = actual->siguiente;
-    } else {
-        anterior->siguiente = actual->siguiente;
-    }
-
+    if (actual == NULL) { cout << "El turno no existe.\n"; return; }
+    if (anterior == NULL) frente = actual->siguiente;
+    else anterior->siguiente = actual->siguiente;
+    if (actual == fin) fin = anterior;
     delete actual;
+    cout << "Turno cancelado correctamente.\n";
+}
 
-    purgarHistorial(codigo);
-    guardarTramites();
+int contarTurnos() {
+    int n = 0;
+    for (Turno* aux = frente; aux != NULL; aux = aux->siguiente) n++;
+    return n;
+}
 
-    cout << "Tramite eliminado correctamente.\n";
+void verificarTurnos() {
+    if (colaVacia()) cout << "No existen clientes pendientes de atencion.\n";
+    else cout << "Hay clientes esperando atencion.\n";
+}
+
+void visualizarOrden() {
+    cout << "\n=== ORDEN DE ATENCION ===\n";
+    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
+    int pos = 1;
+    for (Turno* aux = frente; aux != NULL; aux = aux->siguiente, pos++) {
+        cout << "  Posicion " << pos << " -> Turno No. " << aux->numero
+             << " | DNI: " << aux->dni << " | Tramite: " << aux->codigoTramite;
+        if (pos == 1) cout << "  (SIGUIENTE)";
+        cout << endl;
+    }
+}
+
+void insertarTramite() {
+    cout << "\n=== REGISTRAR TRAMITE ===\n";
+    char codigo[15];
+    leerTexto("Codigo del tramite: ", codigo, 15);
+    if (buscarPorCodigo(codigo) != NULL) {
+        cout << "Error: ya existe un tramite con ese codigo.\n";
+        return;
+    }
+    Tramite* nuevo = new Tramite;
+    strcpy(nuevo->codigo, codigo);
+    leerDni("DNI del cliente (8 digitos): ", nuevo->dni);
+    leerTexto("Nombre del cliente: ", nuevo->nombre, 50);
+    leerTexto("Tipo de tramite: ", nuevo->tipo, 40);
+    leerFecha("Fecha de registro (dd/mm/aaaa): ", nuevo->fecha);
+    strcpy(nuevo->estado, "Pendiente");
+    nuevo->costo = leerCosto("Costo del tramite: S/ ");
+    leerTexto("Descripcion: ", nuevo->descripcion, 100);
+    nuevo->siguiente = NULL;
+
+    if (inicioLista == NULL) inicioLista = nuevo;
+    else {
+        Tramite* aux = inicioLista;
+        while (aux->siguiente != NULL) aux = aux->siguiente;
+        aux->siguiente = nuevo;
+    }
+    cout << "Tramite registrado correctamente.\n";
+    cout << "Codigo: " << nuevo->codigo << " | Cliente: " << nuevo->nombre
+         << " | Estado: " << nuevo->estado << endl;
+}
+
+void mostrarTramites() {
+    cout << "\n=== LISTA DE TRAMITES ===\n";
+    if (inicioLista == NULL) { cout << "La lista esta vacia.\n"; return; }
+    for (Tramite* aux = inicioLista; aux != NULL; aux = aux->siguiente) mostrarTramite(aux);
 }
 
 void buscarTramite() {
@@ -284,7 +492,7 @@ void buscarTramite() {
     }
     if (!encontrado) cout << "No se encontro ningun tramite.\n";
 }
- 
+
 void modificarTramite() {
     cout << "\n=== MODIFICAR TRAMITE ===\n";
     if (inicioLista == NULL) { cout << "La lista esta vacia.\n"; return; }
@@ -318,192 +526,177 @@ void modificarTramite() {
     cout << "Tramite modificado. Los datos anteriores se guardaron en el historial.\n";
 }
 
-//Pilas
-
-void apilarModificacion(Tramite* t, const char* cambio) {
-    if (t == NULL) {
-        return;
-    }
-
-    Modificacion* m = new Modificacion;
-
-    strcpy(m->codigoTramite, t->codigo);
-    strcpy(m->dni, t->dni);
-    strcpy(m->nombre, t->nombre);
-    strcpy(m->tipo, t->tipo);
-    strcpy(m->fecha, t->fecha);
-    strcpy(m->estado, t->estado);
-
-    m->costo = t->costo;
-
-    strcpy(m->descripcion, t->descripcion);
-    strcpy(m->cambio, cambio);
-
-    m->siguiente = cima;
-    cima = m;
-
-    cout << "Modificacion registrada en la pila correctamente.\n";
-}
-
-void eliminarUltimaModificacion() {
-    if (cima == NULL) {
-        cout << "La pila de modificaciones esta vacia.\n";
-        return;
-    }
-
-    Modificacion* temp = cima;
-
-    cima = cima->siguiente;
-
-    delete temp;
-
-    cout << "Ultima modificacion eliminada correctamente.\n";
-}
- 
-void deshacerUltimaModificacion() {
-    cout << "\n=== DESHACER ULTIMA MODIFICACION ===\n";
-    if (pilaVacia()) { cout << "No hay modificaciones para deshacer.\n"; return; }
-    Modificacion* m = cima;
-    cout << "Se recuperaran los datos anteriores:\n";
-    mostrarModificacion(m);
- 
-    Tramite* t = buscarPorCodigo(m->codigoTramite);
-    if (t == NULL) {
-        cout << "El tramite ya no existe en la lista. Se descarta la modificacion.\n";
-    } else {
-        strcpy(t->dni, m->dni);
-        strcpy(t->nombre, m->nombre);
-        strcpy(t->tipo, m->tipo);
-        strcpy(t->fecha, m->fecha);
-        strcpy(t->estado, m->estado);
-        t->costo = m->costo;
-        strcpy(t->descripcion, m->descripcion);
-        cout << "\nTramite restaurado en la lista:\n";
-        mostrarTramite(t);
-    }
-    cima = cima->siguiente;
-    delete m;
-    cout << "Modificacion deshecha y retirada del historial.\n";
-}
- 
-
-void consultarUltimaModificacion() {
-    cout << "\n=== ULTIMA MODIFICACION ===\n";
-    if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
-    mostrarModificacion(cima);
-}
-
-//Colas
-
-void registrarTurno() {
+void eliminarTramite() {
+    cout << "\n=== ELIMINAR TRAMITE ===\n";
+    if (inicioLista == NULL) { cout << "La lista esta vacia.\n"; return; }
     char codigo[15];
-    char dni[9];
+    leerTexto("Codigo del tramite a eliminar: ", codigo, 15);
 
-    cout << "\n--- REGISTRAR TURNO ---\n";
+    Tramite* actual = inicioLista;
+    Tramite* anterior = NULL;
+    while (actual != NULL && strcmp(actual->codigo, codigo) != 0) {
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+    if (actual == NULL) { cout << "Tramite no encontrado.\n"; return; }
 
-    leerTexto("Codigo del tramite: ", codigo, 15);
-
-    Tramite* t = buscarPorCodigo(codigo);
-
-    if (t == NULL) {
-        cout << "Error: no se encontro el tramite.\n";
+    if (strcmp(actual->estado, "En proceso") == 0) {
+        cout << "No se puede eliminar: el tramite esta EN PROCESO.\n";
         return;
     }
-
-    leerDni("DNI del cliente: ", dni);
-
-    if (strcmp(t->dni, dni) != 0) {
-        cout << "Error: el DNI no corresponde al tramite.\n";
+    if (tieneTurnosPendientes(codigo)) {
+        cout << "No se puede eliminar: tiene un turno pendiente. Cancele el turno primero.\n";
         return;
     }
-
-    if (strcmp(t->estado, "Finalizado") == 0) {
-        cout << "No se puede registrar turno para un tramite finalizado.\n";
+    mostrarTramite(actual);
+    char conf[10];
+    leerTexto("Confirmar eliminacion (S/N): ", conf, 10);
+    if (strcmp(conf, "S") != 0 && strcmp(conf, "s") != 0) {
+        cout << "Operacion cancelada.\n";
         return;
     }
+    if (anterior == NULL) inicioLista = actual->siguiente;
+    else anterior->siguiente = actual->siguiente;
+    delete actual;
+    purgarHistorial(codigo);       
+    cout << "Tramite eliminado correctamente.\n";
+}
 
-    Turno* aux = frente;
+void filtrarTramites() {
+    cout << "\n=== FILTRAR TRAMITES ===\n";
+    if (inicioLista == NULL) { cout << "La lista esta vacia.\n"; return; }
+    cout << "1. Por estado\n2. Por tipo de tramite\n3. Por fecha de registro\n";
+    int op = leerOpcion("Opcion: ");
+    char criterio[50];
+    if (op == 1) leerEstado(criterio);
+    else if (op == 2) leerTexto("Tipo de tramite (o parte): ", criterio, 40);
+    else if (op == 3) leerFecha("Fecha de registro (dd/mm/aaaa): ", criterio);
+    else { cout << "Opcion inexistente.\n"; return; }
 
-    while (aux != NULL) {
-        if (strcmp(aux->codigoTramite, codigo) == 0) {
-            cout << "Este tramite ya tiene un turno pendiente.\n";
-            return;
+    int n = 0;
+    for (Tramite* aux = inicioLista; aux != NULL; aux = aux->siguiente) {
+        bool coincide;
+        if (op == 1) coincide = (strcmp(aux->estado, criterio) == 0);
+        else if (op == 2) coincide = (strstr(aux->tipo, criterio) != NULL);
+        else coincide = (strcmp(aux->fecha, criterio) == 0);
+        if (coincide) { mostrarTramite(aux); n++; }
+    }
+    if (n == 0) cout << "No hay tramites que cumplan el criterio.\n";
+    else cout << "\nTramites encontrados: " << n << endl;
+}
+
+void guardarTodo() {
+    ofstream f1(ARCH_TRAMITES);
+    if (f1) {
+        for (Tramite* t = inicioLista; t != NULL; t = t->siguiente)
+            f1 << t->codigo << '|' << t->dni << '|' << t->nombre << '|' << t->tipo << '|'
+               << t->fecha << '|' << t->estado << '|' << t->costo << '|' << t->descripcion << '\n';
+        f1.close();
+    }
+    ofstream f2(ARCH_TURNOS);
+    if (f2) {
+        f2 << ultimoNumero << '\n';
+        for (Turno* t = frente; t != NULL; t = t->siguiente)
+            f2 << t->numero << '|' << t->dni << '|' << t->codigoTramite << '\n';
+        f2.close();
+    }
+    ofstream f3(ARCH_HISTORIAL);
+    if (f3) {
+        for (Modificacion* m = cima; m != NULL; m = m->siguiente)
+            f3 << m->codigoTramite << '|' << m->dni << '|' << m->nombre << '|' << m->tipo << '|'
+               << m->fecha << '|' << m->estado << '|' << m->costo << '|' << m->descripcion << '|'
+               << m->cambio << '\n';
+        f3.close();
+    }
+    cout << "Informacion guardada (tramites, turnos e historial).\n";
+}
+
+void liberarTodo() {
+    while (inicioLista != NULL) {
+        Tramite* t = inicioLista;
+        inicioLista = inicioLista->siguiente;
+        delete t;
+    }
+    while (frente != NULL) {
+        Turno* t = frente;
+        frente = frente->siguiente;
+        delete t;
+    }
+    fin = NULL;
+    while (cima != NULL) {
+        Modificacion* m = cima;
+        cima = cima->siguiente;
+        delete m;
+    }
+}
+
+void cargarTodo() {
+    char costo[20];
+
+    ifstream f1(ARCH_TRAMITES);
+    if (f1) {
+        Tramite* ultimo = NULL;
+        while (true) {
+            Tramite* t = new Tramite;
+            if (!f1.getline(t->codigo, 15, '|')) { delete t; break; }
+            f1.getline(t->dni, 9, '|');
+            f1.getline(t->nombre, 50, '|');
+            f1.getline(t->tipo, 40, '|');
+            f1.getline(t->fecha, 11, '|');
+            f1.getline(t->estado, 15, '|');
+            f1.getline(costo, 20, '|');
+            f1.getline(t->descripcion, 100);
+            t->costo = atof(costo);
+            t->siguiente = NULL;
+            if (inicioLista == NULL) inicioLista = t; else ultimo->siguiente = t;
+            ultimo = t;
         }
-
-        aux = aux->siguiente;
+        f1.close();
     }
 
-    Turno* nuevo = new Turno;
-
-    ultimoNumero++;
-    nuevo->numero = ultimoNumero;
-
-    strcpy(nuevo->dni, dni);
-    strcpy(nuevo->codigoTramite, codigo);
-    nuevo->siguiente = NULL;
-
-    if (frente == NULL) {
-        frente = nuevo;
-        fin = nuevo;
-    } else {
-        fin->siguiente = nuevo;
-        fin = nuevo;
+    ifstream f2(ARCH_TURNOS);
+    if (f2) {
+        f2 >> ultimoNumero;
+        f2.ignore(1000, '\n');
+        char num[10];
+        while (f2.getline(num, 10, '|')) {
+            Turno* t = new Turno;
+            t->numero = atoi(num);
+            f2.getline(t->dni, 9, '|');
+            f2.getline(t->codigoTramite, 15);
+            t->siguiente = NULL;
+            if (frente == NULL) frente = t; else fin->siguiente = t;
+            fin = t;
+        }
+        f2.close();
     }
 
-    guardarTurnos();
-
-    cout << "Turno registrado correctamente.\n";
-    cout << "Numero de turno: " << nuevo->numero << "\n";
+    ifstream f3(ARCH_HISTORIAL);
+    if (f3) {
+        Modificacion* ultimo = NULL;
+        while (true) {
+            Modificacion* m = new Modificacion;
+            if (!f3.getline(m->codigoTramite, 15, '|')) { delete m; break; }
+            f3.getline(m->dni, 9, '|');
+            f3.getline(m->nombre, 50, '|');
+            f3.getline(m->tipo, 40, '|');
+            f3.getline(m->fecha, 11, '|');
+            f3.getline(m->estado, 15, '|');
+            f3.getline(costo, 20, '|');
+            f3.getline(m->descripcion, 100, '|');
+            f3.getline(m->cambio, 100);
+            m->costo = atof(costo);
+            m->siguiente = NULL;
+            if (cima == NULL) cima = m; else ultimo->siguiente = m;
+            ultimo = m;
+        }
+        f3.close();
+    }
+    cout << "Datos cargados: " << contarTramites() << " tramite(s), "
+         << contarTurnos() << " turno(s), " << contarModificaciones()
+         << " modificacion(es).\n";
 }
 
-void atenderSiguienteTurno() {
-    if (frente == NULL) {
-        cout << "No hay turnos pendientes.\n";
-        return;
-    }
-
-    Turno* temp = frente;
-
-    cout << "\n--- ATENDER TURNO ---\n";
-    cout << "Numero de turno: " << temp->numero << "\n";
-    cout << "DNI del cliente: " << temp->dni << "\n";
-    cout << "Codigo del tramite: " << temp->codigoTramite << "\n";
-
-    Tramite* t = buscarPorCodigo(temp->codigoTramite);
-
-    if (t != NULL) {
-        cout << "Nombre del cliente: " << t->nombre << "\n";
-        cout << "Tipo de tramite: " << t->tipo << "\n";
-    }
-
-    frente = frente->siguiente;
-
-    if (frente == NULL) {
-        fin = NULL;
-    }
-
-    delete temp;
-
-    guardarTurnos();
-
-    cout << "Turno atendido y eliminado de la cola.\n";
-}
- 
-
-void mostrarTurnos() {
-    cout << "\n=== TURNOS PENDIENTES ===\n";
-    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
-    for (Turno* aux = frente; aux != NULL; aux = aux->siguiente) mostrarTurno(aux);
-}
- 
-
-void consultarSiguienteTurno() {
-    cout << "\n=== SIGUIENTE TURNO ===\n";
-    if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
-    mostrarTurno(frente);
-}
-
-//Menus
 void menuTramites() {
     int op;
     do {
@@ -575,7 +768,6 @@ void menuHistorial() {
     } while (op != 8);
 }
 
-// ======================= PROGRAMA PRINCIPAL =======================
 int main() {
     cargarTodo();
     int op;
@@ -600,10 +792,3 @@ int main() {
     } while (op != 5);
     return 0;
 }
-
-
-
-
-
-
-
