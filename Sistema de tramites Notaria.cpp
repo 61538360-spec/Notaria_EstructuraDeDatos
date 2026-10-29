@@ -70,6 +70,27 @@ void leerTexto(const char* msg, char* destino, int max) {
     }
 }
 
+void leerTextoLetras(const char* msg, char* destino, int max) {
+    bool tieneNumero;
+
+    do {
+        leerTexto(msg, destino, max);
+        tieneNumero = false;
+
+        for (int i = 0; destino[i] != '\0'; i++) {
+            if (destino[i] >= '0' && destino[i] <= '9') {
+                tieneNumero = true;
+                break;
+            }
+        }
+
+        if (tieneNumero) {
+            cout << "Error: no ingrese numeros en este campo.\n";
+        }
+
+    } while (tieneNumero);
+}
+
 void leerDni(const char* msg, char* destino) {
     char aux[50];
     while (true) {
@@ -158,20 +179,20 @@ void insertarTramite() {
     }
 
     leerDni("DNI del cliente: ", nuevo->dni);
+
     leerTextoLetras("Nombre del cliente: ", nuevo->nombre, 50);
     leerTextoLetras("Tipo de tramite: ", nuevo->tipo, 40);
+
     leerFecha("Fecha de registro (DD/MM/AAAA): ", nuevo->fecha);
 
     strcpy(nuevo->estado, "Pendiente");
 
-    leerCosto("Costo del tramite: ", nuevo->costo);
+    nuevo->costo = leerCosto("Costo del tramite: S/ ");
 
     leerTexto("Descripcion del tramite: ", nuevo->descripcion, 100);
 
     nuevo->siguiente = inicioLista;
     inicioLista = nuevo;
-
-    guardarTramites();
 
     cout << "Tramite registrado correctamente.\n";
 }
