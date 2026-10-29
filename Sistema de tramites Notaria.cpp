@@ -46,6 +46,100 @@ const char* ARCH_TRAMITES = "tramites.txt";
 const char* ARCH_TURNOS = "turnos.txt";
 const char* ARCH_HISTORIAL = "historial.txt";
 
+//Lista
+
+void insertarTramite() {
+    Tramite* nuevo = new Tramite;
+
+    cout << "\n--- REGISTRAR TRAMITE ---\n";
+
+    leerTexto("Codigo del tramite: ", nuevo->codigo, 15);
+
+    if (buscarPorCodigo(nuevo->codigo) != NULL) {
+        cout << "Error: el codigo ya existe.\n";
+        delete nuevo;
+        return;
+    }
+
+    leerDni("DNI del cliente: ", nuevo->dni);
+    leerTextoLetras("Nombre del cliente: ", nuevo->nombre, 50);
+    leerTextoLetras("Tipo de tramite: ", nuevo->tipo, 40);
+    leerFecha("Fecha de registro (DD/MM/AAAA): ", nuevo->fecha);
+
+    strcpy(nuevo->estado, "Pendiente");
+
+    leerCosto("Costo del tramite: ", nuevo->costo);
+
+    leerTexto("Descripcion del tramite: ", nuevo->descripcion, 100);
+
+    nuevo->siguiente = inicioLista;
+    inicioLista = nuevo;
+
+    guardarTramites();
+
+    cout << "Tramite registrado correctamente.\n";
+}
+
+void eliminarTramite() {
+    char codigo[15];
+
+    cout << "\n--- ELIMINAR TRAMITE ---\n";
+    leerTexto("Ingrese el codigo del tramite: ", codigo, 15);
+
+    Tramite* actual = inicioLista;
+    Tramite* anterior = NULL;
+
+    while (actual != NULL &&
+           strcmp(actual->codigo, codigo) != 0) {
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+
+    if (actual == NULL) {
+        cout << "Error: no se encontro el tramite.\n";
+        return;
+    }
+
+    if (strcmp(actual->estado, "En proceso") == 0) {
+        cout << "No se puede eliminar un tramite en proceso.\n";
+        return;
+    }
+
+    Turno* turno = frente;
+
+    while (turno != NULL) {
+        if (strcmp(turno->codigoTramite, codigo) == 0) {
+            cout << "No se puede eliminar: el tramite tiene un turno pendiente.\n";
+            return;
+        }
+
+        turno = turno->siguiente;
+    }
+
+    char respuesta;
+    cout << "¿Desea eliminar el tramite? (S/N): ";
+    cin >> respuesta;
+    cin.ignore(1000, '\n');
+
+    if (respuesta != 'S' && respuesta != 's') {
+        cout << "Eliminacion cancelada.\n";
+        return;
+    }
+
+    if (anterior == NULL) {
+        inicioLista = actual->siguiente;
+    } else {
+        anterior->siguiente = actual->siguiente;
+    }
+
+    delete actual;
+
+    purgarHistorial(codigo);
+    guardarTramites();
+
+    cout << "Tramite eliminado correctamente.\n";
+}
+
 void buscarTramite() {
     cout << "\n=== BUSCAR TRAMITE ===\n";
     if (inicioLista == NULL) { cout << "La lista esta vacia.\n"; return; }
@@ -106,6 +200,48 @@ void modificarTramite() {
     }
     cout << "Tramite modificado. Los datos anteriores se guardaron en el historial.\n";
 }
+
+//Pilas
+
+void apilarModificacion(Tramite* t, const char* cambio) {
+    if (t == NULL) {
+        return;
+    }
+
+    Modificacion* m = new Modificacion;
+
+    strcpy(m->codigoTramite, t->codigo);
+    strcpy(m->dni, t->dni);
+    strcpy(m->nombre, t->nombre);
+    strcpy(m->tipo, t->tipo);
+    strcpy(m->fecha, t->fecha);
+    strcpy(m->estado, t->estado);
+
+    m->costo = t->costo;
+
+    strcpy(m->descripcion, t->descripcion);
+    strcpy(m->cambio, cambio);
+
+    m->siguiente = cima;
+    cima = m;
+
+    cout << "Modificacion registrada en la pila correctamente.\n";
+}
+
+void eliminarUltimaModificacion() {
+    if (cima == NULL) {
+        cout << "La pila de modificaciones esta vacia.\n";
+        return;
+    }
+
+    Modificacion* temp = cima;
+
+    cima = cima->siguiente;
+
+    delete temp;
+
+    cout << "Ultima modificacion eliminada correctamente.\n";
+}
  
 void deshacerUltimaModificacion() {
     cout << "\n=== DESHACER ULTIMA MODIFICACION ===\n";
@@ -138,6 +274,102 @@ void consultarUltimaModificacion() {
     cout << "\n=== ULTIMA MODIFICACION ===\n";
     if (pilaVacia()) { cout << "El historial esta vacio.\n"; return; }
     mostrarModificacion(cima);
+}
+
+//Colas
+
+void registrarTurno() {
+    char codigo[15];
+    char dni[9];
+
+    cout << "\n--- REGISTRAR TURNO ---\n";
+
+    leerTexto("Codigo del tramite: ", codigo, 15);
+
+    Tramite* t = buscarPorCodigo(codigo);
+
+    if (t == NULL) {
+        cout << "Error: no se encontro el tramite.\n";
+        return;
+    }
+
+    leerDni("DNI del cliente: ", dni);
+
+    if (strcmp(t->dni, dni) != 0) {
+        cout << "Error: el DNI no corresponde al tramite.\n";
+        return;
+    }
+
+    if (strcmp(t->estado, "Finalizado") == 0) {
+        cout << "No se puede registrar turno para un tramite finalizado.\n";
+        return;
+    }
+
+    Turno* aux = frente;
+
+    while (aux != NULL) {
+        if (strcmp(aux->codigoTramite, codigo) == 0) {
+            cout << "Este tramite ya tiene un turno pendiente.\n";
+            return;
+        }
+
+        aux = aux->siguiente;
+    }
+
+    Turno* nuevo = new Turno;
+
+    ultimoNumero++;
+    nuevo->numero = ultimoNumero;
+
+    strcpy(nuevo->dni, dni);
+    strcpy(nuevo->codigoTramite, codigo);
+    nuevo->siguiente = NULL;
+
+    if (frente == NULL) {
+        frente = nuevo;
+        fin = nuevo;
+    } else {
+        fin->siguiente = nuevo;
+        fin = nuevo;
+    }
+
+    guardarTurnos();
+
+    cout << "Turno registrado correctamente.\n";
+    cout << "Numero de turno: " << nuevo->numero << "\n";
+}
+
+void atenderSiguienteTurno() {
+    if (frente == NULL) {
+        cout << "No hay turnos pendientes.\n";
+        return;
+    }
+
+    Turno* temp = frente;
+
+    cout << "\n--- ATENDER TURNO ---\n";
+    cout << "Numero de turno: " << temp->numero << "\n";
+    cout << "DNI del cliente: " << temp->dni << "\n";
+    cout << "Codigo del tramite: " << temp->codigoTramite << "\n";
+
+    Tramite* t = buscarPorCodigo(temp->codigoTramite);
+
+    if (t != NULL) {
+        cout << "Nombre del cliente: " << t->nombre << "\n";
+        cout << "Tipo de tramite: " << t->tipo << "\n";
+    }
+
+    frente = frente->siguiente;
+
+    if (frente == NULL) {
+        fin = NULL;
+    }
+
+    delete temp;
+
+    guardarTurnos();
+
+    cout << "Turno atendido y eliminado de la cola.\n";
 }
  
 
