@@ -46,6 +46,102 @@ const char* ARCH_TRAMITES = "tramites.txt";
 const char* ARCH_TURNOS = "turnos.txt";
 const char* ARCH_HISTORIAL = "historial.txt";
 
+bool soloDigitos(const char* s) {
+    int n = strlen(s);
+    if (n == 0) return false;
+    for (int i = 0; i < n; i++)
+        if (s[i] < '0' || s[i] > '9') return false;
+    return true;
+}
+
+void leerTexto(const char* msg, char* destino, int max) {
+    while (true) {
+        cout << msg;
+        cin.getline(destino, max);
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "  Texto demasiado largo.\n";
+        } else if (strlen(destino) == 0 || strchr(destino, '|') != NULL) {
+            cout << "  Dato invalido (no puede estar vacio ni contener '|').\n";
+        } else {
+            return;
+        }
+    }
+}
+
+void leerDni(const char* msg, char* destino) {
+    char aux[50];
+    while (true) {
+        cout << msg;
+        cin.getline(aux, 50);
+        if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); }
+        else if (strlen(aux) == 8 && soloDigitos(aux)) { strcpy(destino, aux); return; }
+        cout << "  DNI invalido. Debe tener exactamente 8 digitos.\n";
+    }
+}
+
+void leerFecha(const char* msg, char* destino) {      // dd/mm/aaaa
+    char aux[50];
+    while (true) {
+        cout << msg;
+        cin.getline(aux, 50);
+        if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); }
+        else if (strlen(aux) == 10 && aux[2] == '/' && aux[5] == '/') {
+            char d[3] = {aux[0], aux[1], '\0'};
+            char m[3] = {aux[3], aux[4], '\0'};
+            char a[5] = {aux[6], aux[7], aux[8], aux[9], '\0'};
+            if (soloDigitos(d) && soloDigitos(m) && soloDigitos(a)) {
+                int dia = atoi(d), mes = atoi(m);
+                if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12) {
+                    strcpy(destino, aux);
+                    return;
+                }
+            }
+        }
+        cout << "  Fecha invalida. Use el formato dd/mm/aaaa.\n";
+    }
+}
+
+float leerCosto(const char* msg) {
+    char aux[50];
+    while (true) {
+        cout << msg;
+        cin.getline(aux, 50);
+        if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); }
+        else {
+            int n = strlen(aux), puntos = 0;
+            bool ok = (n > 0);
+            for (int i = 0; i < n; i++) {
+                if (aux[i] == '.') puntos++;
+                else if (aux[i] < '0' || aux[i] > '9') ok = false;
+            }
+            if (ok && puntos <= 1 && n > puntos) return atof(aux);
+        }
+        cout << "  Costo invalido. Ingrese un numero positivo (ej. 45.50).\n";
+    }
+}
+
+int leerOpcion(const char* msg) {
+    char aux[50];
+    cout << msg;
+    cin.getline(aux, 50);
+    if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); return -1; }
+    if (!soloDigitos(aux)) return -1;
+    return atoi(aux);
+}
+
+void leerEstado(char* destino) {
+    while (true) {
+        cout << "  1. Pendiente\n  2. En proceso\n  3. Finalizado\n";
+        int op = leerOpcion("  Seleccione el estado: ");
+        if (op == 1) { strcpy(destino, "Pendiente"); return; }
+        if (op == 2) { strcpy(destino, "En proceso"); return; }
+        if (op == 3) { strcpy(destino, "Finalizado"); return; }
+        cout << "  Opcion inexistente.\n";
+    }
+}
+
 //Lista
 
 void insertarTramite() {
@@ -385,3 +481,108 @@ void consultarSiguienteTurno() {
     if (colaVacia()) { cout << "No hay turnos pendientes.\n"; return; }
     mostrarTurno(frente);
 }
+
+//Menus
+void menuTramites() {
+    int op;
+    do {
+        cout << "\n--- TRAMITES (LISTA ENLAZADA) ---\n";
+        cout << "1. Registrar tramite\n2. Mostrar tramites\n3. Buscar tramite\n";
+        cout << "4. Modificar tramite\n5. Eliminar tramite\n";
+        cout << "6. Filtrar tramites (estado, tipo o fecha)\n7. Contar tramites\n8. Volver\n";
+        op = leerOpcion("Seleccione una opcion: ");
+        switch (op) {
+            case 1: insertarTramite(); break;
+            case 2: mostrarTramites(); break;
+            case 3: buscarTramite(); break;
+            case 4: modificarTramite(); break;
+            case 5: eliminarTramite(); break;
+            case 6: filtrarTramites(); break;
+            case 7: cout << "\nTotal de tramites: " << contarTramites() << endl; break;
+            case 8: break;
+            default: cout << "Opcion inexistente.\n";
+        }
+    } while (op != 8);
+}
+
+void menuTurnos() {
+    int op;
+    do {
+        cout << "\n--- TURNOS DE ATENCION (COLA) ---\n";
+        cout << "1. Registrar turno\n2. Atender siguiente turno\n3. Mostrar turnos pendientes\n";
+        cout << "4. Consultar siguiente turno\n5. Buscar turno\n6. Cancelar turno\n";
+        cout << "7. Contar turnos pendientes\n8. Verificar turnos pendientes\n";
+        cout << "9. Visualizar orden de atencion\n10. Volver\n";
+        op = leerOpcion("Seleccione una opcion: ");
+        switch (op) {
+            case 1: registrarTurno(); break;
+            case 2: atenderSiguienteTurno(); break;
+            case 3: mostrarTurnos(); break;
+            case 4: consultarSiguienteTurno(); break;
+            case 5: buscarTurno(); break;
+            case 6: cancelarTurno(); break;
+            case 7: cout << "\nTurnos pendientes: " << contarTurnos() << endl; break;
+            case 8: verificarTurnos(); break;
+            case 9: visualizarOrden(); break;
+            case 10: break;
+            default: cout << "Opcion inexistente.\n";
+        }
+    } while (op != 10);
+}
+
+void menuHistorial() {
+    int op;
+    do {
+        cout << "\n--- HISTORIAL DE MODIFICACIONES (PILA) ---\n";
+        cout << "(Las modificaciones se registran solas al modificar un tramite)\n";
+        cout << "1. Deshacer ultima modificacion\n2. Eliminar ultima modificacion\n";
+        cout << "3. Mostrar historial\n4. Consultar ultima modificacion\n";
+        cout << "5. Buscar modificacion por tramite\n6. Contar modificaciones\n";
+        cout << "7. Verificar historial vacio\n8. Volver\n";
+        op = leerOpcion("Seleccione una opcion: ");
+        switch (op) {
+            case 1: deshacerUltimaModificacion(); break;
+            case 2: eliminarUltimaModificacion(); break;
+            case 3: mostrarHistorial(); break;
+            case 4: consultarUltimaModificacion(); break;
+            case 5: buscarModificacion(); break;
+            case 6: cout << "\nModificaciones almacenadas: " << contarModificaciones() << endl; break;
+            case 7: verificarHistorial(); break;
+            case 8: break;
+            default: cout << "Opcion inexistente.\n";
+        }
+    } while (op != 8);
+}
+
+// ======================= PROGRAMA PRINCIPAL =======================
+int main() {
+    cargarTodo();
+    int op;
+    do {
+        cout << "\n==========================================\n";
+        cout << "        SISTEMA DE GESTION NOTARIAL\n";
+        cout << "==========================================\n";
+        cout << "1. Tramites notariales (Lista)\n";
+        cout << "2. Turnos de atencion (Cola)\n";
+        cout << "3. Historial de modificaciones (Pila)\n";
+        cout << "4. Guardar informacion\n";
+        cout << "5. Salir\n";
+        op = leerOpcion("Seleccione una opcion: ");
+        switch (op) {
+            case 1: menuTramites(); break;
+            case 2: menuTurnos(); break;
+            case 3: menuHistorial(); break;
+            case 4: guardarTodo(); break;
+            case 5: guardarTodo(); liberarTodo(); cout << "Saliendo del sistema...\n"; break;
+            default: cout << "Opcion inexistente.\n";
+        }
+    } while (op != 5);
+    return 0;
+}
+
+
+
+
+
+
+
