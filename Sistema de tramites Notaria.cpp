@@ -36,22 +36,51 @@ struct Modificacion {
     Modificacion* siguiente;
 };
 
-Tramite* inicioLista = NULL;           
-Turno* frente = NULL;                  
-Turno* fin = NULL;                    
-int ultimoNumero = 0;                  
-Modificacion* cima = NULL;             
+void agregarFinal(Cadena& inicio, Cadena& ultimo, char c) {
+    Cadena n = new NodoChar;
+    n->c = c;
+    n->siguiente = NULL;
+    if (inicio == NULL) inicio = n;
+    else ultimo->siguiente = n;
+    ultimo = n;
+}
 
-const char* ARCH_TRAMITES = "tramites.txt";
-const char* ARCH_TURNOS = "turnos.txt";
-const char* ARCH_HISTORIAL = "historial.txt";
+void liberarCadena(Cadena& s) {
+    while (s != NULL) {
+        Cadena aux = s;
+        s = s->siguiente;
+        delete aux;
+    }
+}
 
-bool soloDigitos(const char* s) {
-    int n = strlen(s);
-    if (n == 0) return false;
-    for (int i = 0; i < n; i++)
-        if (s[i] < '0' || s[i] > '9') return false;
-    return true;
+Cadena desdeTexto(const char* t) {
+    Cadena inicio = NULL, ultimo = NULL;
+    for (const char* p = t; *p != '\0'; p++) agregarFinal(inicio, ultimo, *p);
+    return inicio;
+}
+
+Cadena copiar(Cadena s) {
+    Cadena inicio = NULL, ultimo = NULL;
+    for (Cadena p = s; p != NULL; p = p->siguiente) agregarFinal(inicio, ultimo, p->c);
+    return inicio;
+}
+
+void reemplazar(Cadena& destino, Cadena nueva) {
+    liberarCadena(destino);
+    destino = nueva;
+}
+
+int longitud(Cadena s) {
+    int n = 0;
+    for (Cadena p = s; p != NULL; p = p->siguiente) n++;
+    return n;
+}
+
+char caracterEn(Cadena s, int pos) {
+    int i = 0;
+    for (Cadena p = s; p != NULL; p = p->siguiente, i++)
+        if (i == pos) return p->c;
+    return '\0';
 }
 
 void leerTexto(const char* msg, char* destino, int max) {
@@ -70,25 +99,80 @@ void leerTexto(const char* msg, char* destino, int max) {
     }
 }
 
-void leerTextoLetras(const char* msg, char* destino, int max) {
-    bool tieneNumero;
+Cadena subcadena(Cadena s, int desde, int cuantos) {
+    Cadena inicio = NULL, ultimo = NULL;
+    int i = 0;
+    for (Cadena p = s; p != NULL; p = p->siguiente, i++)
+        if (i >= desde && i < desde + cuantos) agregarFinal(inicio, ultimo, p->c);
+    return inicio;
+}
 
-    do {
-        leerTexto(msg, destino, max);
-        tieneNumero = false;
+bool iguales(Cadena a, Cadena b) {
+    while (a != NULL && b != NULL) {
+        if (a->c != b->c) return false;
+        a = a->siguiente;
+        b = b->siguiente;
+    }
+    return a == NULL && b == NULL;
+}
 
-        for (int i = 0; destino[i] != '\0'; i++) {
-            if (destino[i] >= '0' && destino[i] <= '9') {
-                tieneNumero = true;
-                break;
-            }
+bool iguales(Cadena a, const char* b) {
+    while (a != NULL && *b != '\0') {
+        if (a->c != *b) return false;
+        a = a->siguiente;
+        b++;
+    }
+    return a == NULL && *b == '\0';
+}
+
+bool contiene(Cadena texto, Cadena buscado) {
+    if (buscado == NULL) return true;
+    for (Cadena inicio = texto; inicio != NULL; inicio = inicio->siguiente) {
+        Cadena p = inicio, q = buscado;
+        while (p != NULL && q != NULL && p->c == q->c) {
+            p = p->siguiente;
+            q = q->siguiente;
         }
+        if (q == NULL) return true;
+    }
+    return false;
+}
 
-        if (tieneNumero) {
-            cout << "No ingrese numeros en este campo\n";
+bool tieneChar(Cadena s, char c) {
+    for (Cadena p = s; p != NULL; p = p->siguiente)
+        if (p->c == c) return true;
+    return false;
+}
+
+bool soloDigitos(Cadena s) {
+    if (s == NULL) return false;
+    for (Cadena p = s; p != NULL; p = p->siguiente)
+        if (p->c < '0' || p->c > '9') return false;
+    return true;
+}
+
+int aEntero(Cadena s) {
+    int n = 0;
+    for (Cadena p = s; p != NULL; p = p->siguiente) n = n * 10 + (p->c - '0');
+    return n;
+}
+
+float aFloat(Cadena s) {
+    double entero = 0, decimal = 0, factor = 0.1;
+    bool enDecimal = false;
+    for (Cadena p = s; p != NULL; p = p->siguiente) {
+        if (p->c == '.') enDecimal = true;
+        else if (!enDecimal) entero = entero * 10 + (p->c - '0');
+        else {
+            decimal += (p->c - '0') * factor;
+            factor /= 10;
         }
+    }
+    return (float)(entero + decimal);
+}
 
-    } while (tieneNumero);
+void mostrarCadena(ostream& salida, Cadena s) {
+    for (Cadena p = s; p != NULL; p = p->siguiente) salida << p->c;
 }
 
 
@@ -707,14 +791,13 @@ void cargarTodo() {
          << contarTurnos() << " turno(s), " << contarModificaciones()
          << " modificacion(es).\n";
 }
-
 void menuTramites() {
     int op;
     do {
         cout << "\n--- TRAMITES (LISTA ENLAZADA) ---\n";
         cout << "1. Registrar tramite\n2. Mostrar tramites\n3. Buscar tramite\n";
         cout << "4. Modificar tramite\n5. Eliminar tramite\n";
-        cout << "6. Filtrar tramites (estado, tipo o fecha)\n7. Contar tramites\n8. Volver\n";
+        cout << "6. Contar tramites\n7. Volver\n";
         op = leerOpcion("Seleccione una opcion: ");
         switch (op) {
             case 1: insertarTramite(); break;
@@ -722,39 +805,12 @@ void menuTramites() {
             case 3: buscarTramite(); break;
             case 4: modificarTramite(); break;
             case 5: eliminarTramite(); break;
-            case 6: filtrarTramites(); break;
-            case 7: cout << "\nTotal de tramites: " << contarTramites() << endl; break;
-            case 8: break;
+            case 6: cout << "\nTotal de tramites: " << contarTramites() << endl; break;
+            case 7: break;
             default: cout << "Opcion inexistente.\n";
         }
-    } while (op != 8);
-}
-
-void menuTurnos() {
-    int op;
-    do {
-        cout << "\n--- TURNOS DE ATENCION (COLA) ---\n";
-        cout << "1. Registrar turno\n2. Atender siguiente turno\n3. Mostrar turnos pendientes\n";
-        cout << "4. Consultar siguiente turno\n5. Buscar turno\n6. Cancelar turno\n";
-        cout << "7. Contar turnos pendientes\n8. Verificar turnos pendientes\n";
-        cout << "9. Visualizar orden de atencion\n10. Volver\n";
-        op = leerOpcion("Seleccione una opcion: ");
-        switch (op) {
-            case 1: registrarTurno(); break;
-            case 2: atenderSiguienteTurno(); break;
-            case 3: mostrarTurnos(); break;
-            case 4: consultarSiguienteTurno(); break;
-            case 5: buscarTurno(); break;
-            case 6: cancelarTurno(); break;
-            case 7: cout << "\nTurnos pendientes: " << contarTurnos() << endl; break;
-            case 8: verificarTurnos(); break;
-            case 9: visualizarOrden(); break;
-            case 10: break;
-            default: cout << "Opcion inexistente.\n";
-        }
-    } while (op != 10);
-}
-
+    } while (op != 7);
+}    
 void menuHistorial() {
     int op;
     do {
@@ -778,7 +834,6 @@ void menuHistorial() {
         }
     } while (op != 8);
 }
-
 void menuTurnos() {
     int op;
     do {
@@ -800,7 +855,6 @@ void menuTurnos() {
         }
     } while (op != 8);
 }
-
 
 int main() {
     cargarTodo();
