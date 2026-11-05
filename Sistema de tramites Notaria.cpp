@@ -1093,11 +1093,6 @@ void visualizarOrden() {
     }
 }
 
-void verificarTurnos() {
-    if (colaVacia()) cout << "No existen clientes pendientes de atencion.\n";
-    else cout << "Hay clientes esperando atencion.\n";
-}
-
 void guardarTodo() {
     ofstream f1(ARCH_TRAMITES);
     if (f1) {
