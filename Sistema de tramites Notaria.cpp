@@ -779,6 +779,29 @@ void menuHistorial() {
     } while (op != 8);
 }
 
+void menuTurnos() {
+    int op;
+    do {
+        cout << "\n--- TURNOS DE ATENCION (COLA) ---\n";
+        cout << "1. Registrar turno\n2. Atender siguiente turno\n3. Mostrar turnos pendientes\n";
+        cout << "4. Consultar siguiente turno\n5. Buscar turno\n6. Cancelar turno\n";
+        cout << "7. Contar turnos pendientes\n8. Volver\n";
+        op = leerOpcion("Seleccione una opcion: ");
+        switch (op) {
+            case 1: registrarTurno(); break;
+            case 2: atenderSiguienteTurno(); break;
+            case 3: mostrarTurnos(); break;
+            case 4: consultarSiguienteTurno(); break;
+            case 5: buscarTurno(); break;
+            case 6: cancelarTurno(); break;
+            case 7: cout << "\nTurnos pendientes: " << contarTurnos() << endl; break;
+            case 8: break;
+            default: cout << "Opcion inexistente.\n";
+        }
+    } while (op != 8);
+}
+
+
 int main() {
     cargarTodo();
     int op;
